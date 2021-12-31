@@ -1,6 +1,8 @@
 import sys
+
+import pandas
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt,pyqtSignal
 import pandas as pd
 from PyQt5.QtWidgets import QPushButton, QFileDialog, QLineEdit, QFormLayout, QLabel, QComboBox
 from PyQt5.QtGui import QIcon, QFont
@@ -35,12 +37,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self.count = None
+        self.data = pd.DataFrame({'Load your csv': []})
+        self.name = None
         self.initMe() # Erstelle die GUI
 
 
     def initMe(self):
-        self.data = pd.DataFrame({'Load your csv': []})
-        self.name = "Empty"
+        #self.data = pd.DataFrame({'Load your csv': []})
+        #self.name = "Empty"
         self.count = 0
 
         # Initilisiere Fenster
@@ -60,8 +65,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.table.setGeometry(50, 50, 350, 500)
         self.model = TableModel(self.data)  # Instanziere Daten ? Nur wie?
         self.table.setModel(self.model)
-        self.table.clicked.connect(self.ascentSort)
-        self.table.doubleClicked.connect(self.descentSort)
+        #self.table.horizontalHeader().sectionClicked.connect(self.fun)
+
+        #self.table.horizontalHeader(),QtCore.pyqtSignal('sectionClicked (int)'),self.fun
+        self.table.horizontalHeader().sectionClicked.connect(self.ascentSort_header)
+        self.table.horizontalHeader().sectionDoubleClicked.connect(self.descentSort_header)
+
+        #self.table.clicked.connect(self.ascentSort_old())
+        #self.table.doubleClicked.connect(self.descentSort_old())
         # 3 times clicked /
 
         # 2. LineEdit Seperator
@@ -98,15 +109,31 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.model.layoutChanged.emit()
 
     def seperator_added(self, s): # Decimal Operator --> Integrate default into selection
+        print(s)
+        print(self.line.text())
+        print(self.cb.currentText())
+        print("next")
+
         if s:
             #print(self.name)
-            data = pd.read_csv(self.name, decimal=s, engine='python')
-            self.model._data = data
-            self.data = data
-            self.model.layoutChanged.emit()
+            if self.cb.currentText():
+                data = pd.read_csv(self.name, decimal=s, delimiter=self.cb.currentText(), engine='python')
+            else:
+                data = pd.read_csv(self.name, decimal=s, engine='python')
+            self.update_data(data)
+            # self.model._data = data
+            # self.data = data
+            # self.model.layoutChanged.emit()
 
     def selectionchange(self, i): # Delimeter Selector
-        data = pd.read_csv(self.name, delimiter=self.cb.currentText(), engine='python')
+        print(i)
+        print(self.line.text())
+        print(self.cb.currentText())
+        if self.line.text():
+            data = pd.read_csv(self.name, decimal=self.line.text(), delimiter=self.cb.currentText(), engine='python')
+        else:
+            data = pd.read_csv(self.name, delimiter=self.cb.currentText(), engine='python')
+        #self.update_data(data)
         self.model._data = data
         self.data = data
         self.model.layoutChanged.emit()
@@ -131,7 +158,25 @@ class MainWindow(QtWidgets.QMainWindow):
     def counter(self):
         self.data.sort_values(axis=1)
 
-    def ascentSort(self, item):
+    def update_data(self,data):
+        assert isinstance(data, pd.DataFrame)
+        self.model._data = data
+        self.data = data
+        self.model.layoutChanged.emit()
+
+    def ascentSort_header(self, i):
+        #print("index clicked is" + str(i))
+        header = self.data.columns[i][:]
+        data = self.data.sort_values(by=header, ascending=True)
+        self.update_data(data)
+
+    def descentSort_header(self, i):
+        #print("index clicked is" + str(i))
+        header = self.data.columns[i][:]
+        data = self.data.sort_values(by=header, ascending=False)
+        self.update_data(data)
+
+    def ascentSort_old(self, i): # Selection via Fields
         # http://www.python-forum.org/viewtopic.php?f=11&t=16817
         sf = "You clicked on {0}x{1}".format(item.column(), item.row())
         col=type(item.column())
@@ -143,7 +188,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.data = data
         self.model.layoutChanged.emit()
 
-    def descentSort(self, item):
+    def descentSort_old(self, item): # Selection via Fields
         print("DoubleClick")
         # http://www.python-forum.org/viewtopic.php?f=11&t=16817
         sf = "You clicked on {0}x{1}".format(item.column(), item.row())
