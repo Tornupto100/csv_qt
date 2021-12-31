@@ -41,6 +41,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def initMe(self):
         self.data = pd.DataFrame({'Load your csv': []})
         self.name = "Empty"
+        self.count = 0
 
         # Initilisiere Fenster
         self.setWindowTitle("CSV_Loader")
@@ -59,6 +60,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.table.setGeometry(50, 50, 350, 500)
         self.model = TableModel(self.data)  # Instanziere Daten ? Nur wie?
         self.table.setModel(self.model)
+        self.table.clicked.connect(self.ascentSort)
+        self.table.doubleClicked.connect(self.descentSort)
+        # 3 times clicked /
 
         # 2. LineEdit Seperator
         self.line = QLineEdit(self)
@@ -93,15 +97,15 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.data = data
                 self.model.layoutChanged.emit()
 
-    def seperator_added(self, s):
+    def seperator_added(self, s): # Decimal Operator --> Integrate default into selection
         if s:
             #print(self.name)
-            data = pd.read_csv(self.name, sep=s, engine='python')
+            data = pd.read_csv(self.name, decimal=s, engine='python')
             self.model._data = data
             self.data = data
             self.model.layoutChanged.emit()
 
-    def selectionchange(self, i):
+    def selectionchange(self, i): # Delimeter Selector
         data = pd.read_csv(self.name, delimiter=self.cb.currentText(), engine='python')
         self.model._data = data
         self.data = data
@@ -124,8 +128,33 @@ class MainWindow(QtWidgets.QMainWindow):
         #if self.name != None:
          #   self.data.to_excel("output.xlsx")
 
-    def sort(self,axis,ascending):
-        self.data.sort_values(axis=1,)
+    def counter(self):
+        self.data.sort_values(axis=1)
+
+    def ascentSort(self, item):
+        # http://www.python-forum.org/viewtopic.php?f=11&t=16817
+        sf = "You clicked on {0}x{1}".format(item.column(), item.row())
+        col=type(item.column())
+        header=self.data.columns[item.column()][:]
+        print(col)
+        print("oneClick")
+        data = self.data.sort_values(by=header,ascending=True)
+        self.model._data = data
+        self.data = data
+        self.model.layoutChanged.emit()
+
+    def descentSort(self, item):
+        print("DoubleClick")
+        # http://www.python-forum.org/viewtopic.php?f=11&t=16817
+        sf = "You clicked on {0}x{1}".format(item.column(), item.row())
+        col=type(item.column())
+        header=self.data.columns[item.column()][:]
+        print(col)
+        print(header)
+        data = self.data.sort_values(by=header,ascending=False)
+        self.model._data = data
+        self.data = data
+        self.model.layoutChanged.emit()
 
 "Just a comment"
 app=QtWidgets.QApplication(sys.argv)
